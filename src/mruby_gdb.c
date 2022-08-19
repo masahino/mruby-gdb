@@ -51,14 +51,14 @@ mrb_gdb_get_callinfosize(mrb_state *mrb)
             mrb_irep *irep = ci->proc->body.irep;
             mrb_code *pc;
             
-            if (mrb->c->cibase[i].err) {
-                pc = mrb->c->cibase[i].err;
+            if (mrb->c->cibase[i].pc) {
+                pc = mrb->c->cibase[i].pc;
             }else if (i+1 <= ciidx) {
                 pc = mrb->c->cibase[i+1].pc - 1;
             }else {
                 pc = ci->pc; //continue;
             }
-            lineno = mrb_debug_get_line(irep, pc - irep->iseq);
+            lineno = mrb_debug_get_line(mrb, irep, pc - irep->iseq);
         }
         if (lineno == -1){
             continue;
@@ -78,8 +78,8 @@ mrb_gdb_get_callinfosize_m(mrb_state *mrb, mrb_value self)
 MRB_API void
 mrb_gdb_code_fetch(struct mrb_state* mrb, struct mrb_irep *irep, mrb_code *pc, mrb_value *regs)
 {
-    filename = mrb_debug_get_filename(irep, pc - irep->iseq);
-    line = mrb_debug_get_line(irep, pc - irep->iseq);
+    filename = mrb_debug_get_filename(mrb, irep, pc - irep->iseq);
+    line = mrb_debug_get_line(mrb, irep, pc - irep->iseq);
     if(filename==NULL || line== -1){
         return;
     }
@@ -137,13 +137,13 @@ mrb_gdb_get_locals(struct mrb_state* mrb){
     strncpy(ret, "locals=[", sizeof(ret)-1);
     mrb->code_fetch_hook = NULL;
     for (i=0; i+1<local_len; i++) {
-        if (irep->lv[i].name == 0){
+        if (irep->lv[i] == 0){
             continue;
         }
-        uint16_t reg = irep->lv[i].r;
-        mrb_sym sym = irep->lv[i].name;if (!sym){ continue;}
+        uint16_t reg = i;
+        mrb_sym sym = irep->lv[i];if (!sym){ continue;}
         symname = mrb_sym2name(mrb, sym);
-        mrb_value v2 = mrb->c->stack[reg];
+        mrb_value v2 = mrb->c->ci->stack[reg];
         const char *v2_classname = mrb_obj_classname(mrb, v2);
         mrb_value v2_value = mrb_funcall(mrb, v2, "inspect", 0);
         char * v2_cstr = mrb_str_to_cstr(mrb, v2_value);
@@ -192,10 +192,10 @@ mrb_gdb_get_localvalue(struct mrb_state* mrb, char *symname){
     }
     strncpy(ret, "result=", sizeof(ret)-1);
     for (i=0; i<local_len; i++) {
-        mrb_sym sym = irep->lv[i].name;
+        mrb_sym sym = irep->lv[i];
         if(sym == sym2){
-            uint16_t reg = irep->lv[i].r;
-            mrb_value v2 = mrb->c->stack[reg];
+            uint16_t reg = i;
+            mrb_value v2 = mrb->c->ci->stack[reg];
             const char *v2_classname = mrb_obj_classname(mrb, v2);
             mrb->code_fetch_hook = NULL;
             mrb_value v2_value = mrb_funcall(mrb, v2, "inspect", 0);
@@ -230,14 +230,16 @@ void
 mrb_mruby_gdb_gem_init(mrb_state* mrb) {
     
     struct RClass *gdb;
-    
+
+    mrb->code_fetch_hook = mrb_gdb_code_fetch;
+
     gdb = mrb_define_class(mrb, "Gdb", mrb->object_class);
     
-    mrb_define_method(mrb, gdb, "initialize", mrb_gdb_initialize, ARGS_REQ(2));
-    mrb_define_method(mrb, gdb, "callinfosize", mrb_gdb_get_callinfosize_m, ARGS_REQ(1));
-    mrb_define_method(mrb, gdb, "current", mrb_gdb_get_current_m, ARGS_REQ(1));
-    mrb_define_method(mrb, gdb, "locals", mrb_gdb_get_locals_m, ARGS_REQ(1));
-    mrb_define_method(mrb, gdb, "local_value", mrb_gdb_get_localvalue_m, ARGS_REQ(2));
+    mrb_define_method(mrb, gdb, "initialize", mrb_gdb_initialize, MRB_ARGS_REQ(2));
+    mrb_define_method(mrb, gdb, "callinfosize", mrb_gdb_get_callinfosize_m, MRB_ARGS_REQ(1));
+    mrb_define_method(mrb, gdb, "current", mrb_gdb_get_current_m, MRB_ARGS_REQ(1));
+    mrb_define_method(mrb, gdb, "locals", mrb_gdb_get_locals_m, MRB_ARGS_REQ(1));
+    mrb_define_method(mrb, gdb, "local_value", mrb_gdb_get_localvalue_m, MRB_ARGS_REQ(2));
     
 }
 
