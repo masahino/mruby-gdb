@@ -140,7 +140,7 @@ mrb_gdb_get_locals(struct mrb_state* mrb){
         if (irep->lv[i] == 0){
             continue;
         }
-        uint16_t reg = i;
+        uint16_t reg = i + 1;
         mrb_sym sym = irep->lv[i];if (!sym){ continue;}
         symname = mrb_sym2name(mrb, sym);
         mrb_value v2 = mrb->c->ci->stack[reg];
@@ -194,7 +194,7 @@ mrb_gdb_get_localvalue(struct mrb_state* mrb, char *symname){
     for (i=0; i<local_len; i++) {
         mrb_sym sym = irep->lv[i];
         if(sym == sym2){
-            uint16_t reg = i;
+            uint16_t reg = i + 1;
             mrb_value v2 = mrb->c->ci->stack[reg];
             const char *v2_classname = mrb_obj_classname(mrb, v2);
             mrb->code_fetch_hook = NULL;
