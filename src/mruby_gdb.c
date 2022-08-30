@@ -45,7 +45,7 @@ mrb_gdb_get_callinfosize(mrb_state *mrb)
     
     for (i = ciidx; i >= 0; i--) {
         ci = &mrb->c->cibase[i];
-        if (MRB_PROC_CFUNC_P(ci->proc)) {
+        if (ci->proc == NULL || MRB_PROC_CFUNC_P(ci->proc)) {
             continue;
         }else {
             mrb_irep *irep = ci->proc->body.irep;
